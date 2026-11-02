@@ -70,7 +70,9 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           ZIP="DisplayToggle-$TAG-macos-universal.zip"
-          gh release create "$TAG" "$ZIP" "$ZIP.sha256" \
+          # release-notes.md 供内置更新器在没有 API 配额时兜底读取
+          cp notes.md release-notes.md
+          gh release create "$TAG" "$ZIP" "$ZIP.sha256" release-notes.md \
             --title "$TAG" \
             --notes-file notes.md \
             --verify-tag

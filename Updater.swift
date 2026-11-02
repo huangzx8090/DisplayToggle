@@ -54,7 +54,7 @@ enum Updater {
         UserDefaults.standard.set(Date(), forKey: lastCheckKey)
         dtlog("update 检查更新（当前 \(currentVersion)）")
 
-        requestLatest { result in
+        resolveLatest { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let info):
@@ -86,6 +86,115 @@ enum Updater {
     }
 
     // MARK: 网络
+
+    /// 先走 GitHub API（信息最全）；失败（常见：未认证请求被限流 60 次/小时）时
+    /// 退回不需要 API 的 releases/latest 重定向 + 固定下载地址。
+    private static func resolveLatest(completion: @escaping (Result<UpdateInfo, Error>) -> Void) {
+        requestLatest { apiResult in
+            if case .success = apiResult {
+                completion(apiResult)
+                return
+            }
+            if case .failure(let error) = apiResult {
+                dtlog("update API 不可用（\(error.localizedDescription)），改用 release 页面解析")
+            }
+            requestLatestViaWeb(completion: completion)
+        }
+    }
+
+    private static func requestLatestViaWeb(completion: @escaping (Result<UpdateInfo, Error>) -> Void) {
+        guard let url = URL(string: "https://github.com/\(repository)/releases/latest") else {
+            completion(.failure(UpdaterError.message("发布地址无效")))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"        // 只跟随 302 拿到最终的 tag 地址，不下载整页
+        request.setValue("DisplayToggle/\(currentVersion)", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard let finalURL = response?.url,
+                  let tag = releaseTag(from: finalURL) else {
+                completion(.failure(UpdaterError.message("无法从发布页面解析版本号")))
+                return
+            }
+            let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+            let notesURL = "https://github.com/\(repository)/releases/latest/download/release-notes.md"
+            let assetName = "DisplayToggle-\(tag)-macos-universal.zip"
+            guard let asset = URL(string: "https://github.com/\(repository)/releases/latest/download/\(assetName)") else {
+                completion(.failure(UpdaterError.message("安装包地址无效")))
+                return
+            }
+            fetchText(notesURL) { notes in
+                let body = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+                completion(.success(UpdateInfo(
+                    version: version,
+                    tag: tag,
+                    notes: body?.isEmpty == false ? body! : "这个版本没有附带单独的更新说明，点「查看详情」可以在发布页面看到。",
+                    downloadURL: asset,
+                    releaseURL: finalURL)))
+            }
+        }.resume()
+    }
+
+    private static func releaseTag(from url: URL) -> String? {
+        let parts = url.pathComponents
+        guard let index = parts.firstIndex(of: "tag"), index + 1 < parts.count else { return nil }
+        let tag = parts[index + 1]
+        return tag.isEmpty ? nil : tag
+    }
+
+    private static func fetchText(_ urlString: String, completion: @escaping (String?) -> Void) {
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue("DisplayToggle/\(currentVersion)", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard error == nil,
+                  let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let data, let text = String(data: data, encoding: .utf8) else {
+                completion(nil)
+                return
+            }
+            completion(text)
+        }.resume()
+    }
+
+    // MARK: 命令行自查
+
+    /// `displaytoggle check-update`：不弹窗，直接把结果打到 stdout（便于脚本和排查）
+    static func cliCheck() -> Never {
+        print("当前版本：\(currentVersion)")
+        print("更新源：https://github.com/\(repository)/releases/latest")
+        let semaphore = DispatchSemaphore(value: 0)
+        var status: Int32 = 0
+        resolveLatest { result in
+            switch result {
+            case .success(let info):
+                if Version.isNewer(info.version, than: currentVersion) {
+                    print("发现新版本：\(info.version)")
+                    print("更新说明：")
+                    print(info.notes)
+                    print("安装包：\(info.downloadURL.absoluteString)")
+                } else {
+                    print("已是最新版本")
+                }
+            case .failure(let error):
+                print("检查失败：\(error.localizedDescription)")
+                status = 1
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        exit(status)
+    }
 
     private static func requestLatest(completion: @escaping (Result<UpdateInfo, Error>) -> Void) {
         guard let url = URL(string: "https://api.github.com/repos/\(repository)/releases/latest") else {

@@ -1654,6 +1654,8 @@ func runCLI(_ args: [String]) -> Never {
     case "lid":
         print("Lid: \(Lid.state.rawValue)")
         exit(0)
+    case "check-update":
+        Updater.cliCheck()
     case "lid-angle":
         let reader = LidAngleReader()
         if let angle = reader.read() { print("开盖角度：\(angle)°") }
@@ -1711,7 +1713,7 @@ func runCLI(_ args: [String]) -> Never {
         guard args.count == 2 else { exit(2) }
         KeyboardBacklightWorker.recover()
     default:
-        print("Usage: DisplayToggle [on|off|toggle|status|lid|lid-angle|true-tone|diagnose|hidpi-list|ddc-status]")
+        print("Usage: DisplayToggle [on|off|toggle|status|lid|lid-angle|true-tone|check-update|diagnose|hidpi-list|ddc-status]")
         print("  不带参数运行则启动菜单栏应用")
         exit(2)
     }
