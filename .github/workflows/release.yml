@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 要发布/重建的 tag（例如 v1.10.0）
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 需要完整的 tag 对象来读发布说明
+
+      - name: 解析版本号
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: 单元测试
+        run: ./tests/run.sh
+
+      - name: 构建（universal）
+        env:
+          DISPLAYTOGGLE_VERSION: ${{ steps.version.outputs.version }}
+          DISPLAYTOGGLE_BUILD: ${{ github.run_number }}
+        run: ./build.sh
+
+      - name: 校验产物
+        run: |
+          APP=build/DisplayToggle.app
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
+          codesign --verify --deep --strict "$APP"
+          lipo -info "$APP/Contents/MacOS/DisplayToggle"
+
+      - name: 打包安装包
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          ZIP="DisplayToggle-$TAG-macos-universal.zip"
+          ditto -c -k --keepParent build/DisplayToggle.app "$ZIP"
+          shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
+          ls -lh "$ZIP"
+
+      - name: 读取发布说明（tag 注解）
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag -l --format='%(contents)' "$TAG" > notes.md
+          # 没写 tag 注解时给一份兜底说明
+          if [ ! -s notes.md ] || ! grep -q '[^[:space:]]' notes.md; then
+            printf '## %s\n\n- 从仓库自动构建的 universal 安装包\n' "$TAG" > notes.md
+          fi
+          cat notes.md
+
+      - name: 发布
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          ZIP="DisplayToggle-$TAG-macos-universal.zip"
+          gh release create "$TAG" "$ZIP" "$ZIP.sha256" \
+            --title "$TAG" \
+            --notes-file notes.md \
+            --verify-tag

@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 单元测试
+        run: ./tests/run.sh
+
+      - name: 构建（universal）
+        run: ./build.sh
+
+      - name: 校验产物
+        run: |
+          ./build/DisplayToggle.app/Contents/MacOS/DisplayToggle status || true
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" build/DisplayToggle.app/Contents/Info.plist
+          codesign --verify --deep --strict build/DisplayToggle.app
+          lipo -info build/DisplayToggle.app/Contents/MacOS/DisplayToggle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DisplayToggle-app
+          path: build/DisplayToggle.app
+          if-no-files-found: error

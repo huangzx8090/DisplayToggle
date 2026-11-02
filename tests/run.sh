@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/displaytoggle-tests.XXXXXX")
+trap 'rm -rf "$TEST_DIR"' EXIT
+swiftc ModeCatalog.swift tests/ModeCatalogTests.swift -o "$TEST_DIR/mode-catalog-tests"
+"$TEST_DIR/mode-catalog-tests"
+swiftc DDCProtocol.swift tests/DDCProtocolTests.swift -o "$TEST_DIR/ddc-protocol-tests"
+"$TEST_DIR/ddc-protocol-tests"
+swiftc PreviewLock.swift tests/PreviewLockTests.swift -o "$TEST_DIR/preview-lock-tests"
+"$TEST_DIR/preview-lock-tests"
+swiftc TrueTonePolicy.swift tests/TrueTonePolicyTests.swift -o "$TEST_DIR/true-tone-policy-tests"
+"$TEST_DIR/true-tone-policy-tests"
+swiftc AnglePolicy.swift tests/AnglePolicyTests.swift -o "$TEST_DIR/angle-policy-tests"
+"$TEST_DIR/angle-policy-tests"
+swiftc KeyboardBacklightPolicy.swift tests/KeyboardBacklightPolicyTests.swift -o "$TEST_DIR/keyboard-backlight-policy-tests"
+"$TEST_DIR/keyboard-backlight-policy-tests"
+swiftc DisplayPolicy.swift tests/DisplayPolicyTests.swift -o "$TEST_DIR/display-policy-tests"
+"$TEST_DIR/display-policy-tests"
+swiftc Version.swift tests/VersionTests.swift -o "$TEST_DIR/version-tests"
+"$TEST_DIR/version-tests"
