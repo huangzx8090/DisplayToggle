@@ -58,7 +58,15 @@ jobs:
       - name: 读取发布说明（tag 注解）
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          git tag -l --format='%(contents)' "$TAG" > notes.md
+          # actions/checkout 对 tag 事件取到的可能是轻量 tag（指向 commit），
+          # 那样 %(contents) 只会拿到 commit message。强制重新取注释对象。
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
+          if [ "$(git cat-file -t "$TAG")" = "tag" ]; then
+            git tag -l --format='%(contents)' "$TAG" > notes.md
+          else
+            echo "::warning::tag $TAG 不是注解 tag，发布说明将使用兜底内容"
+            : > notes.md
+          fi
           # 没写 tag 注解时给一份兜底说明
           if [ ! -s notes.md ] || ! grep -q '[^[:space:]]' notes.md; then
             printf '## %s\n\n- 从仓库自动构建的 universal 安装包\n' "$TAG" > notes.md
