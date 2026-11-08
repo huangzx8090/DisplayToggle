@@ -82,6 +82,7 @@ func dtFlushLog() {
 enum DisplayService {
 
     private static let cacheKey = "cachedBuiltinDisplayID"
+    private static var configurationGate = BuiltinConfigurationGate()
 
     static func onlineDisplays() -> [CGDirectDisplayID] {
         var count: UInt32 = 0
@@ -206,6 +207,7 @@ enum DisplayService {
     private static func apply(_ api: SLSConfigureDisplayEnabledFn,
                               display: CGDirectDisplayID,
                               enabled: Bool) -> CGError {
+        dtlog("display-config id=\(display) enabled=\(enabled) 提交会话配置")
         var config: CGDisplayConfigRef?
         let beginErr = CGBeginDisplayConfiguration(&config)
         guard beginErr == .success, let config else { return beginErr }
@@ -219,7 +221,18 @@ enum DisplayService {
         return doneErr
     }
 
-    static func setBuiltin(enabled: Bool) -> ToggleResult {
+    static func setBuiltin(enabled: Bool, retryImmediately: Bool = false) -> ToggleResult {
+        let lock = appCacheDir.appendingPathComponent("builtin-display-configuration.lock")
+        switch DisplayConfigurationLock.withLock(lock, {
+            setBuiltinLocked(enabled: enabled, retryImmediately: retryImmediately)
+        }) {
+        case .acquired(let result): return result
+        case .busy: return ToggleResult(ok: false, message: "内屏配置正在处理中，请稍后再试")
+        case .unavailable: return ToggleResult(ok: false, message: "无法锁定内屏配置，请稍后再试")
+        }
+    }
+
+    private static func setBuiltinLocked(enabled: Bool, retryImmediately: Bool) -> ToggleResult {
         guard let api = s_SLSConfigureDisplayEnabled else {
             return ToggleResult(ok: false, message: "无法加载 SkyLight 私有接口")
         }
@@ -236,9 +249,21 @@ enum DisplayService {
            !UserDefaults.standard.bool(forKey: "allowBuiltinOnWhenLidClosed") {
             return ToggleResult(ok: false, message: "盖子合着，已阻止点亮内屏（菜单里可开启「合盖时保持内屏点亮」）")
         }
-        // 幂等：已经是目标状态就直接返回，避免系统返回 kCGErrorFailure
-        if isBuiltinActive() == enabled {
+        switch configurationGate.begin(enabled: enabled, currentEnabled: isBuiltinActive(),
+                                       now: ProcessInfo.processInfo.systemUptime,
+                                       retryImmediately: retryImmediately) {
+        case .unchanged:
             return ToggleResult(ok: true, message: enabled ? "内屏已是点亮状态" : "内屏已是关闭状态")
+        case .inFlight:
+            return ToggleResult(ok: false, message: "内屏配置正在处理中")
+        case .coolingDown:
+            return ToggleResult(ok: false, message: "内屏配置等待重试，请稍后再试")
+        case .apply:
+            break
+        }
+        var succeeded = false
+        defer {
+            configurationGate.finish(succeeded: succeeded, now: ProcessInfo.processInfo.systemUptime)
         }
 
         var lastError: CGError = .failure
@@ -272,6 +297,7 @@ enum DisplayService {
             }
             UserDefaults.standard.set(Int(display), forKey: cacheKey)
             dtlog("setBuiltin id=\(display) enabled=\(enabled) 成功")
+            succeeded = true
             return ToggleResult(ok: true, message: enabled ? "内屏已点亮" : "内屏已关闭")
         }
         return ToggleResult(ok: false, message: "切换内屏失败（错误码 \(lastError.rawValue)）")
@@ -281,7 +307,7 @@ enum DisplayService {
         let previous = ManualOverride.current
         // CLI 与菜单进程并行：先公布手动意图，再触发显示器重配置回调。
         ManualOverride.record(enabled: enabled)
-        let result = setBuiltin(enabled: enabled)
+        let result = setBuiltin(enabled: enabled, retryImmediately: true)
         if !result.ok { ManualOverride.restore(previous) }
         return result
     }
@@ -701,7 +727,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func restoreForShutdown() {
         keyboardHold.update(holding: false)
-        if wantBuiltinOff && mayLightUpBuiltin { _ = DisplayService.setBuiltin(enabled: true) }
+        if wantBuiltinOff && mayLightUpBuiltin {
+            _ = DisplayService.setBuiltin(enabled: true, retryImmediately: true)
+        }
         let desired = TrueTonePolicy.desired(builtinVisible: DisplayService.isBuiltinVisible(),
                                               externalVisible: DisplayService.activeExternalCount(),
                                               asleep: DisplayService.screenAsleep())
@@ -836,9 +864,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let builtinActive = DisplayService.isBuiltinActive()
         let lidState = Lid.state
         lidStatusItem?.updateText(lidStatusTitle(lidState))
-        // 完全失去物理外屏时，系统可能把虚拟屏报告为睡眠；不能因此阻塞安全恢复。
-        let asleep = (simulatedNoExternal || extOnline == 0)
-            ? false : (screensSleeping || DisplayService.screenAsleep())
+        let activity = DisplayActivity(builtinActive: builtinActive,
+                                       externalOnline: extOnline, externalActive: extActive,
+                                       screensSleeping: screensSleeping,
+                                       physicalDisplaysAsleep: DisplayService.screenAsleep())
+        let asleep = activity.asleep
         var manual = ManualOverride.current
         if let manual { wantBuiltinOff = !manual.enabled }
 
@@ -877,7 +907,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             closedOverrideNextAttempt = 0
             // 拔掉全部物理外屏后持续重试；合盖时仍由底层保护决定是否允许点亮。
-            if !builtinActive && extActive == 0 && !asleep && (extOnline == 0 || autoRestore) {
+            if activity.shouldRestoreBuiltin(autoRestore: autoRestore) {
                 if !mayLightUpBuiltin {
                     if watchdogSince == nil {
                         dtlog("watchdog 待命: 无可用外接屏但内屏关闭 (lid=\(lidState.rawValue) allowLidClosed=\(allowBuiltinOnWhenLidClosed))")
@@ -949,7 +979,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     externalStableSince = nil
                 }
-                if wantBuiltinOff && builtinActive && extActive > 0 &&
+                if !asleep && wantBuiltinOff && builtinActive && extActive > 0 &&
                     (mode == .externalOnly || manual?.enabled == false) {
                     _ = DisplayService.setBuiltin(enabled: false)
                 }

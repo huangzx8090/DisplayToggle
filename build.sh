@@ -28,7 +28,7 @@ BINARIES=()
 for architecture in $ARCHS; do
     case "$architecture" in arm64|x86_64) ;; *) echo "不支持的架构: $architecture" >&2; exit 1 ;; esac
     binary="$ARCH_DIR/$APP_NAME-$architecture"
-    swiftc -O -target "$architecture-apple-macos13.0" main.swift Version.swift Updater.swift HiDPI.swift ModeCatalog.swift DisplayInfo.swift DisplayPolicy.swift DDCService.swift DDCProtocol.swift DDCPreview.swift PreviewLock.swift TrueTonePolicy.swift TrueToneService.swift LidAngle.swift AnglePolicy.swift KeyboardBacklightPolicy.swift KeyboardBacklight.swift -o "$binary"
+    swiftc -O -target "$architecture-apple-macos13.0" main.swift Version.swift Updater.swift HiDPI.swift ModeCatalog.swift DisplayInfo.swift DisplayPolicy.swift DisplayConfigurationLock.swift DDCService.swift DDCProtocol.swift DDCPreview.swift PreviewLock.swift TrueTonePolicy.swift TrueToneService.swift LidAngle.swift AnglePolicy.swift KeyboardBacklightPolicy.swift KeyboardBacklight.swift -o "$binary"
     BINARIES+=("$binary")
 done
 if [ "${#BINARIES[@]}" -eq 1 ]; then
