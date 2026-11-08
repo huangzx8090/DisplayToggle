@@ -222,6 +222,17 @@ enum DisplayService {
     }
 
     static func setBuiltin(enabled: Bool, retryImmediately: Bool = false) -> ToggleResult {
+        let lock = appCacheDir.appendingPathComponent("builtin-display-configuration.lock")
+        switch DisplayConfigurationLock.withLock(lock, {
+            setBuiltinLocked(enabled: enabled, retryImmediately: retryImmediately)
+        }) {
+        case .acquired(let result): return result
+        case .busy: return ToggleResult(ok: false, message: "内屏配置正在处理中，请稍后再试")
+        case .unavailable: return ToggleResult(ok: false, message: "无法锁定内屏配置，请稍后再试")
+        }
+    }
+
+    private static func setBuiltinLocked(enabled: Bool, retryImmediately: Bool) -> ToggleResult {
         guard let api = s_SLSConfigureDisplayEnabled else {
             return ToggleResult(ok: false, message: "无法加载 SkyLight 私有接口")
         }

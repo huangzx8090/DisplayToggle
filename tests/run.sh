@@ -17,5 +17,7 @@ swiftc KeyboardBacklightPolicy.swift tests/KeyboardBacklightPolicyTests.swift -o
 "$TEST_DIR/keyboard-backlight-policy-tests"
 swiftc DisplayPolicy.swift tests/DisplayPolicyTests.swift -o "$TEST_DIR/display-policy-tests"
 "$TEST_DIR/display-policy-tests"
+swiftc DisplayConfigurationLock.swift tests/DisplayConfigurationLockTests.swift -o "$TEST_DIR/display-configuration-lock-tests"
+"$TEST_DIR/display-configuration-lock-tests"
 swiftc Version.swift tests/VersionTests.swift -o "$TEST_DIR/version-tests"
 "$TEST_DIR/version-tests"
