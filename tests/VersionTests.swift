@@ -24,6 +24,9 @@ struct VersionTests {
         expect(Version.isNewer("v2.0.0", than: "1.9.0"), "带 v 前缀")
         expect(Version.isNewer("1.9.0", than: "1.9.0-beta.2"), "预发布后缀被忽略")
         expect(Version.isNewer("1.0.1", than: "1.0"), "补零比较")
+        expect(Version.isNewer("1.9.0-beta.10", than: "1.9.0-beta.2"), "预发布数字标识按数值比较")
+        expect(Version.isNewer("1.9.0-beta", than: "1.9.0-1"), "文本预发布标识高于数字标识")
+        expect(!Version.isNewer("1.9.0+build.2", than: "1.9.0+build.1"), "构建元数据不影响版本优先级")
 
         if failures > 0 {
             print("版本比较测试失败 \(failures) 项")

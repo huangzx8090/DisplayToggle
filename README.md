@@ -218,3 +218,7 @@ MIT，见 [LICENSE](LICENSE)。
 DDC/CI 协议实现参考 [AppleSiliconDDC](https://github.com/waydabber/BetterDisplay) 与
 [Hammerspoon](https://github.com/Hammerspoon/hammerspoon)。
 各自的 MIT 许可原文保存在 `THIRD_PARTY_LICENSES/`。
+
+## 诊断报告
+
+菜单中的“导出诊断报告…”可保存当前显示拓扑、内外屏活动/息屏状态和应用版本；报告不包含显示器序列号、个人目录或日志正文。也可从应用可执行文件运行 `diagnose-json` 输出同样的 JSON。该命令只读取状态，不执行显示配置、旧版本迁移或键盘背光操作。

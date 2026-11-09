@@ -2,6 +2,7 @@ import Cocoa
 import CoreGraphics
 import Foundation
 import IOKit
+import UniformTypeIdentifiers
 
 // MARK: - 私有 SkyLight API（和原 displaytoggle 用的是同一个）
 
@@ -1133,6 +1134,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func exportDiagnostics() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "DisplayToggle-diagnostics.json"
+        panel.message = "导出当前显示状态，不包含序列号、个人路径或日志正文。"
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try makeDiagnosticReport().encoded().write(to: url, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        } catch {
+            showAlert("无法导出诊断报告：\(error.localizedDescription)")
+        }
+    }
+
     // MARK: 动作
 
     @objc private func refreshDDC() {
@@ -1645,6 +1661,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logItem.target = self
         menu.addItem(logItem)
 
+        let diagnostics = NSMenuItem(title: "导出诊断报告…", action: #selector(exportDiagnostics), keyEquivalent: "")
+        diagnostics.target = self
+        menu.addItem(diagnostics)
+
         menu.addItem(.separator())
 
         let quit = NSMenuItem(title: "退出 DisplayToggle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -1656,8 +1676,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 // MARK: - CLI 模式（和原来的 displaytoggle 参数一致）
 
+func makeDiagnosticReport() -> DiagnosticReport {
+    let identifiers = Set(DisplayService.allDisplays() + DisplayService.onlineDisplays() + DisplayService.activeDisplays()).sorted()
+    let displays = identifiers.enumerated().map { index, id in
+        let bounds = CGDisplayBounds(id)
+        return DisplayDiagnostic(index: index + 1, builtin: CGDisplayIsBuiltin(id) != 0,
+            online: CGDisplayIsOnline(id) != 0, active: CGDisplayIsActive(id) != 0,
+            asleep: CGDisplayIsAsleep(id) != 0, width: Int(bounds.width), height: Int(bounds.height),
+            mirrored: CGDisplayMirrorsDisplay(id) != 0, exclusionReason: DisplayService.externalExclusionReason(id))
+    }
+    return DiagnosticReport(capturedAt: Date(), appVersion: Updater.currentVersion,
+        operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString, displays: displays)
+}
+
 func runCLI(_ args: [String]) -> Never {
     switch args[1].lowercased() {
+    case "diagnose-json":
+        do {
+            FileHandle.standardOutput.write(try makeDiagnosticReport().encoded())
+            FileHandle.standardOutput.write(Data("\n".utf8))
+            exit(0)
+        } catch {
+            fputs("无法生成诊断报告\n", stderr)
+            exit(1)
+        }
     case "on":
         let r = DisplayService.setBuiltinFromUser(enabled: true)
         print(r.message)
@@ -1743,15 +1785,16 @@ func runCLI(_ args: [String]) -> Never {
         guard args.count == 2 else { exit(2) }
         KeyboardBacklightWorker.recover()
     default:
-        print("Usage: DisplayToggle [on|off|toggle|status|lid|lid-angle|true-tone|check-update|diagnose|hidpi-list|ddc-status]")
+        print("Usage: DisplayToggle [on|off|toggle|status|lid|lid-angle|true-tone|check-update|diagnose|diagnose-json|hidpi-list|ddc-status]")
         print("  不带参数运行则启动菜单栏应用")
         exit(2)
     }
 }
 
-LegacyMigration.runIfNeeded()
-
 let arguments = CommandLine.arguments
+if arguments.count < 2 || arguments[1].lowercased() != "diagnose-json" {
+    LegacyMigration.runIfNeeded()
+}
 if arguments.count > 1 {
     runCLI(arguments)
 }
