@@ -20,6 +20,8 @@ fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp -R Assets/MacBook "$APP/Contents/Resources/MacBook"
+cp -R THIRD_PARTY_LICENSES "$APP/Contents/Resources/Licenses"
 
 ARCH_DIR="$BUILD_DIR/arch"
 mkdir -p "$ARCH_DIR"

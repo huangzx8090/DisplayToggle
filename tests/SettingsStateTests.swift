@@ -24,17 +24,17 @@ struct SettingsStateTests {
                    "缺失或越界角度不显示伪造读数")
         }
 
-        let flat = LidGeometry.lidPoint(x: 25, distance: 100, angle: 0)
-        let upright = LidGeometry.lidPoint(x: 25, distance: 100, angle: 90)
-        let backward = LidGeometry.lidPoint(x: 25, distance: 100, angle: 135)
-        expect(near(flat.y, 100) && near(flat.z, 0), "零度盖板与底座重合")
-        expect(near(upright.y, 0) && near(upright.z, 100), "九十度盖板竖直")
-        expect(backward.y < 0 && backward.z > 0, "大于九十度正确向后展开")
+        // 将原模型的盖板方向绕实际支点旋转，检查打开角度而不是复述公式。
+        let rest = LidGeometry.restAngle * .pi / 180
         for angle in [0.0, 30, 90, 135, 180] {
-            let hinge = LidGeometry.lidPoint(x: 25, distance: 0, angle: angle)
-            expect(near(hinge.x, 25) && near(hinge.y, 0) && near(hinge.z, 0),
-                   "旋转过程中铰链位置不漂移")
+            let rotation = LidGeometry.rotation(for: angle)
+            let y = sin(rest) * cos(rotation) - cos(rest) * sin(rotation)
+            let z = sin(rest) * sin(rotation) + cos(rest) * cos(rotation)
+            expect(near(y, sin(angle * .pi / 180)) && near(z, cos(angle * .pi / 180)),
+                   "原素材旋转后开盖角度为 \(Int(angle))°")
         }
+        expect(near(LidGeometry.rotation(for: -20), LidGeometry.rotation(for: 0)) &&
+               near(LidGeometry.rotation(for: 220), LidGeometry.rotation(for: 180)), "模型旋转限制在物理角度范围")
 
         var state = DisplaySettingsState()
         state.externalCount = 1

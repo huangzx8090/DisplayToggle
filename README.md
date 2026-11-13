@@ -120,6 +120,8 @@ xattr -cr /Applications/DisplayToggle.app
 “显示与策略”页中的 MacBook 示意随真实角度读数开合，底座保持固定。
 合盖状态优先于滞后的角度读数；没有有效角度时明确显示不可用，
 不会把中性示意姿态当成实际角度。动画遵循系统“减少动态效果”设置。
+设备外观采用 akshatmittal 的现成 MacBook Pro 14 模型，使用原生 SceneKit
+按需渲染，不另行绘制机身。模型、纹理及环境素材随应用离线打包。
 
 “外接显示器”页列出后台已读取的分辨率、刷新率及硬件控制，
 沿用原有预览、确认和还原保护；DDC 滑块在松开后才发送调整。
@@ -213,8 +215,10 @@ DT_FAKE_ANGLE=120 ...                     # 假装盖子角度
 main.swift              菜单栏 App、状态机、CLI、旧版本迁移
 SettingsModel.swift     设置窗口状态与动作桥接
 SettingsWindow.swift    原生设置窗口、策略及外接屏控件
-LidGeometry.swift       角度读数展示规则与铰链投影
-LidIllustration.swift   跟随角度的 MacBook 开合示意
+LidGeometry.swift       角度读数展示规则与原素材旋转校准
+LidIllustration.swift   原生 SceneKit 模型、材质和开合动画
+Assets/MacBook/         第三方设备模型、原始纹理、摄影棚环境和来源清单
+tools/prepare-macbook.swift 固定版本的原模型转换工具（非应用运行代码）
 Updater.swift           GitHub Release 检查 / 下载 / 原子替换
 Version.swift           版本号比较
 DisplayPolicy.swift     三档外屏策略定义
@@ -233,6 +237,14 @@ tests/                  纯逻辑单测
 ## 许可与致谢
 
 MIT，见 [LICENSE](LICENSE)。
+
+设置窗口的设备模型 **2021 Macbook Pro 14" (M1 Pro / M1 Max)** 由
+[akshatmittal](https://sketchfab.com/3d-models/2021-macbook-pro-14-m1-pro-m1-max-f6b0b940fb6a4286b18a674ef32af2d3)
+创作，采用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)；
+已转换资源格式、设置铰链并调整屏幕材质。摄影棚环境来自 Poly Haven 的
+[Studio Small 09](https://polyhaven.com/a/studio_small_09)，采用 CC0。
+完整署名、改动说明和许可证见 [THIRD_PARTY_LICENSES/MacBook-ATTRIBUTION.md](THIRD_PARTY_LICENSES/MacBook-ATTRIBUTION.md)。
+这些第三方美术资源不适用本项目代码的 MIT 许可，不作为本项目原创源程序。
 
 角度读取参考 [LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor)；
 键盘背光桥接与抑制状态处理参考 [Dim Keys](https://github.com/dmartoon/MacBook-Keyboard-Backlight-Limiter) 与

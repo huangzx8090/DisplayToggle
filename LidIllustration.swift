@@ -1,138 +1,171 @@
+import AppKit
+import SceneKit
 import SwiftUI
 
-struct LidIllustration: View, Animatable {
-    var angle: Double
+struct LidIllustration: NSViewRepresentable {
+    let angle: Double
     let screenOn: Bool
-    let threshold: Int?
+    let reduceMotion: Bool
 
-    var animatableData: Double {
-        get { angle }
-        set { angle = newValue }
+    func makeNSView(context: Context) -> MacBookView { MacBookView() }
+
+    func updateNSView(_ view: MacBookView, context: Context) {
+        view.update(angle: angle, screenOn: screenOn, animated: !reduceMotion)
+    }
+}
+
+final class MacBookView: SCNView {
+    private let model: MacBookScene?
+    private var previousAngle: Double?
+    private var previousScreenOn: Bool?
+
+    init() {
+        model = try? MacBookScene()
+        super.init(frame: .zero, options: nil)
+        backgroundColor = .clear
+        allowsCameraControl = false
+        autoenablesDefaultLighting = false
+        antialiasingMode = .multisampling4X
+        preferredFramesPerSecond = 30
+        // 静态时不持续重绘；只有传感器变化触发短暂的 SceneKit 动画。
+        rendersContinuously = false
+        isPlaying = false
+        scene = model?.scene
+        pointOfView = model?.camera
+        if model == nil {
+            let label = NSTextField(labelWithString: "设备预览素材未能载入")
+            label.textColor = .secondaryLabelColor
+            label.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(label)
+            NSLayoutConstraint.activate([
+                label.centerXAnchor.constraint(equalTo: centerXAnchor),
+                label.centerYAnchor.constraint(equalTo: centerYAnchor)
+            ])
+        }
+        setAccessibilityElement(false)
     }
 
-    private let silver = Color(red: 0.69, green: 0.74, blue: 0.80)
-    private let graphite = Color(red: 0.10, green: 0.14, blue: 0.19)
+    required init?(coder: NSCoder) { nil }
 
-    var body: some View {
-        Canvas { context, size in
-            draw(context, size: size)
-        }
-        .accessibilityHidden(true)
+    func update(angle: Double, screenOn: Bool, animated: Bool) {
+        guard previousAngle != angle || previousScreenOn != screenOn else { return }
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = animated && previousAngle != nil ? 0.45 : 0
+        SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        model?.setPose(angle: angle, screenOn: screenOn)
+        SCNTransaction.commit()
+        previousAngle = angle
+        previousScreenOn = screenOn
+        needsDisplay = true
+    }
+}
+
+final class MacBookScene {
+    struct Material: Decodable {
+        let name: String
+        let color: [Double]
+        let metalness: Double
+        let roughness: Double
+        let emission: [Double]
+        let doubleSided: Bool
+        let alphaBlend: Bool
+        let diffuseTexture: String?
+        let normalTexture: String?
+        let metallicRoughnessTexture: String?
+        let occlusionTexture: String?
     }
 
-    private func draw(_ context: GraphicsContext, size: CGSize) {
-        func project(_ point: LidGeometry.Point) -> CGPoint {
-            LidGeometry.project(point, size: size)
+    private struct Manifest: Decodable { let materials: [Material] }
+    enum LoadError: Error { case missingResources, missingLid }
+
+    let scene: SCNScene
+    let camera = SCNNode()
+    let lid: SCNNode
+    private let screen: SCNMaterial?
+
+    init(resourceDirectory: URL? = Bundle.main.resourceURL?.appendingPathComponent("MacBook")) throws {
+        guard let directory = resourceDirectory else { throw LoadError.missingResources }
+        scene = try SCNScene(url: directory.appendingPathComponent("model.scn"), options: nil)
+        guard let lid = scene.rootNode.childNode(withName: "lid", recursively: true) else {
+            throw LoadError.missingLid
         }
-        func base(_ x: Double, _ y: Double, _ z: Double = 0) -> CGPoint {
-            project(.init(x: x, y: y, z: z))
-        }
-        func lid(_ x: Double, _ distance: Double, _ inset: Double = 0) -> CGPoint {
-            project(LidGeometry.lidPoint(x: x, distance: distance, angle: angle, inset: inset))
-        }
-        func polygon(_ points: [CGPoint]) -> Path {
-            Path { path in
-                guard let first = points.first else { return }
-                path.move(to: first)
-                for point in points.dropFirst() { path.addLine(to: point) }
-                path.closeSubpath()
+        self.lid = lid
+        let manifest = try JSONDecoder().decode(Manifest.self,
+            from: Data(contentsOf: directory.appendingPathComponent("model.json")))
+        let definitions = Dictionary(uniqueKeysWithValues: manifest.materials.map { ($0.name, $0) })
+        var screenMaterial: SCNMaterial?
+        scene.rootNode.enumerateChildNodes { node, _ in
+            for material in node.geometry?.materials ?? [] {
+                guard let name = material.name, let definition = definitions[name] else { continue }
+                Self.apply(definition, to: material, directory: directory)
+                if name == "material_2" { screenMaterial = material }
             }
         }
-        func baseRect(_ x: Double, _ y: Double, _ width: Double, _ depth: Double) -> Path {
-            polygon([base(x, y), base(x + width, y),
-                     base(x + width, y + depth), base(x, y + depth)])
+        screen = screenMaterial
+
+        // 原素材上盖与底座已分组。仅设置铰链支点，完整保留作者的机身几何。
+        lid.pivot = SCNMatrix4MakeTranslation(0, -0.0043, -0.1145)
+        lid.position = SCNVector3(0, -0.0043, -0.1145)
+
+        scene.background.contents = NSColor.clear
+        scene.lightingEnvironment.contents = directory.appendingPathComponent("studio_small_09_1k.hdr")
+        scene.lightingEnvironment.intensity = 0.5
+
+        camera.camera = SCNCamera()
+        camera.camera?.usesOrthographicProjection = true
+        camera.camera?.orthographicScale = 0.19
+        camera.camera?.zNear = 0.01
+        camera.camera?.zFar = 5
+        camera.camera?.wantsHDR = true
+        camera.camera?.wantsExposureAdaptation = false
+        camera.position = SCNVector3(0.20, 0.22, 0.5)
+        camera.look(at: SCNVector3(0, 0.085, -0.035))
+        scene.rootNode.addChildNode(camera)
+
+        let key = SCNNode()
+        key.light = SCNLight()
+        key.light?.type = .directional
+        key.light?.intensity = 250
+        key.position = SCNVector3(-0.3, 0.8, 0.6)
+        key.look(at: SCNVector3(0, 0, 0))
+        scene.rootNode.addChildNode(key)
+        setPose(angle: 100, screenOn: true)
+    }
+
+    func setPose(angle: Double, screenOn: Bool) {
+        lid.eulerAngles.x = CGFloat(LidGeometry.rotation(for: angle))
+        screen?.diffuse.contents = screenOn ? NSColor(white: 0.9, alpha: 1) : NSColor(white: 0.015, alpha: 1)
+        screen?.emission.contents = screenOn ? NSColor(white: 0.55, alpha: 1) : NSColor.black
+        screen?.metalness.contents = 0.0
+        screen?.roughness.contents = 0.3
+    }
+
+    private static func apply(_ source: Material, to material: SCNMaterial, directory: URL) {
+        material.lightingModel = .physicallyBased
+        material.diffuse.contents = NSColor(srgbRed: source.color[0], green: source.color[1],
+                                           blue: source.color[2], alpha: source.color[3])
+        material.metalness.contents = source.metalness
+        material.roughness.contents = source.roughness
+        material.emission.contents = NSColor(srgbRed: source.emission[0], green: source.emission[1],
+                                            blue: source.emission[2], alpha: 1)
+        material.isDoubleSided = source.doubleSided
+        material.transparency = source.alphaBlend ? CGFloat(source.color[3]) : 1
+        func texture(_ path: String?, _ property: SCNMaterialProperty) {
+            guard let path else { return }
+            property.contents = directory.appendingPathComponent(path)
+            // glTF 的纹理原点在左上角，SceneKit 使用左下角。
+            property.contentsTransform = SCNMatrix4Mult(SCNMatrix4MakeScale(1, -1, 1),
+                                                        SCNMatrix4MakeTranslation(0, 1, 0))
+            property.wrapS = .repeat
+            property.wrapT = .repeat
         }
-        func lidRect(_ x: Double, _ y: Double, _ width: Double,
-                     _ height: Double, _ inset: Double = 0) -> Path {
-            polygon([lid(x, y, inset), lid(x + width, y, inset),
-                     lid(x + width, y + height, inset), lid(x, y + height, inset)])
-        }
-
-        let deck = baseRect(-115, 0, 230, 145)
-        var shadow = context
-        shadow.addFilter(.shadow(color: .black.opacity(0.20), radius: 12, x: 0, y: 12))
-        shadow.fill(deck, with: .color(silver))
-
-        let front = polygon([base(-115, 145), base(115, 145),
-                             base(112, 145, -5), base(-112, 145, -5)])
-        context.fill(front, with: .color(silver.opacity(0.85)))
-        context.fill(deck, with: .linearGradient(
-            Gradient(colors: [Color(red: 0.91, green: 0.93, blue: 0.96), silver]),
-            startPoint: base(-115, 0), endPoint: base(115, 145)))
-        context.stroke(deck, with: .color(Color.white.opacity(0.6)),
-                       style: StrokeStyle(lineWidth: 1, lineJoin: .round))
-
-        context.fill(baseRect(-101, 19, 202, 65), with: .color(graphite.opacity(0.85)))
-        for row in 0..<4 {
-            for column in 0..<10 {
-                let key = baseRect(-96 + Double(column) * 19.5,
-                                   23 + Double(row) * 14.5, 16, 10)
-                context.fill(key, with: .color(Color(red: 0.23, green: 0.28, blue: 0.34)))
-                context.stroke(key, with: .color(.white.opacity(0.12)), lineWidth: 0.5)
-            }
-        }
-        let trackpad = baseRect(-39, 98, 78, 35)
-        context.fill(trackpad, with: .color(.white.opacity(0.12)))
-        context.stroke(trackpad, with: .color(graphite.opacity(0.25)), lineWidth: 0.8)
-        context.stroke(Path { path in
-            path.move(to: base(-17, 145, -1))
-            path.addLine(to: base(17, 145, -1))
-        }, with: .color(graphite.opacity(0.3)), lineWidth: 1.5)
-
-        // 底座始终不动，屏幕各顶点都绕同一条铰链旋转。
-        let shell = lidRect(-115, 0, 230, 145)
-        context.fill(shell, with: .linearGradient(
-            Gradient(colors: [silver, Color(red: 0.88, green: 0.91, blue: 0.95)]),
-            startPoint: lid(-115, 145), endPoint: lid(115, 0)))
-        context.stroke(shell, with: .color(graphite.opacity(0.38)),
-                       style: StrokeStyle(lineWidth: 1.2, lineJoin: .round))
-
-        let faceOpacity = max(0, min(1, (angle - 30) / 22))
-        if faceOpacity > 0 {
-            let bezel = lidRect(-111, 4, 222, 138, 0.7)
-            context.fill(bezel, with: .color(graphite.opacity(faceOpacity)))
-            let screen = lidRect(-105, 10, 210, 126, 1)
-            let screenColors: [Color] = screenOn
-                ? [Color(red: 0.06, green: 0.20, blue: 0.39),
-                   Color(red: 0.09, green: 0.39, blue: 0.62),
-                   Color(red: 0.23, green: 0.77, blue: 0.80)]
-                : [Color(red: 0.07, green: 0.09, blue: 0.12),
-                   Color(red: 0.11, green: 0.14, blue: 0.18)]
-            var face = context
-            face.opacity = faceOpacity
-            face.fill(screen, with: .linearGradient(
-                Gradient(colors: screenColors), startPoint: lid(-105, 136),
-                endPoint: lid(105, 10)))
-            if screenOn {
-                face.clip(to: screen)
-                let ribbon = polygon([lid(-130, 38, 1.1), lid(130, 103, 1.1),
-                                      lid(130, 124, 1.1), lid(-130, 70, 1.1)])
-                face.fill(ribbon, with: .color(.white.opacity(0.10)))
-            }
-        }
-        context.stroke(Path { path in
-            path.move(to: base(-102, 0, 1))
-            path.addLine(to: base(102, 0, 1))
-        }, with: .color(graphite.opacity(0.75)),
-           style: StrokeStyle(lineWidth: 3, lineCap: .round))
-
-        if let threshold {
-            let origin = base(143, 0)
-            let end = project(LidGeometry.lidPoint(x: 143, distance: 64,
-                                                  angle: Double(threshold)))
-            var guide = Path()
-            guide.move(to: origin)
-            guide.addLine(to: end)
-            context.stroke(guide, with: .color(.accentColor.opacity(0.45)),
-                           style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-            var arc = Path()
-            for degree in stride(from: 0, through: max(3, Int(angle)), by: 3) {
-                let point = project(LidGeometry.lidPoint(x: 143, distance: 42,
-                                                        angle: Double(degree)))
-                if degree == 0 { arc.move(to: point) } else { arc.addLine(to: point) }
-            }
-            context.stroke(arc, with: .color(.accentColor.opacity(0.65)),
-                           style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
-        }
+        texture(source.diffuseTexture, material.diffuse)
+        texture(source.normalTexture, material.normal)
+        texture(source.metallicRoughnessTexture, material.metalness)
+        material.metalness.textureComponents = .blue
+        texture(source.metallicRoughnessTexture, material.roughness)
+        material.roughness.textureComponents = .green
+        texture(source.occlusionTexture, material.ambientOcclusion)
+        material.ambientOcclusion.textureComponents = .red
     }
 }

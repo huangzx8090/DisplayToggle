@@ -222,7 +222,7 @@ private struct SettingsRootView: View {
         switch model.state.externalMode {
         case .angle:
             return model.state.pose.source == .sensor
-                ? "达到设定角度时使用内屏。动画跟随真实读数，虚线表示打开内屏的阈值。"
+                ? "达到设定角度时使用内屏。设备模型跟随真实读数开合。"
                 : "需要可读取的角度传感器。没有有效读数时，角度控制暂停。"
         case .externalOnly:
             return "物理外接屏稳定出画后关闭内屏，拔掉全部外屏时按保护条件尝试恢复。"
@@ -343,6 +343,14 @@ private struct SettingsRootView: View {
                 Spacer()
                 Button("检查更新…") { model.actions.checkUpdates() }
             }
+            Divider()
+            HStack(spacing: 6) {
+                Text("设备模型：akshatmittal")
+                Link("原始素材", destination: URL(string: "https://sketchfab.com/3d-models/2021-macbook-pro-14-m1-pro-m1-max-f6b0b940fb6a4286b18a674ef32af2d3")!)
+                Link("CC BY 4.0", destination: URL(string: "https://creativecommons.org/licenses/by/4.0/")!)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -364,9 +372,8 @@ private struct LidStatusView: View {
     var body: some View {
         HStack(spacing: 12) {
             LidIllustration(angle: illustratedAngle, screenOn: state.builtinVisible,
-                            threshold: state.externalMode == .angle && state.pose.source == .sensor
-                                ? state.angleThreshold : nil)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: illustratedAngle)
+                            reduceMotion: reduceMotion)
+                .accessibilityHidden(true)
                 .frame(maxWidth: .infinity)
             VStack(alignment: .leading, spacing: 10) {
                 Text("开盖角度").foregroundStyle(.secondary)

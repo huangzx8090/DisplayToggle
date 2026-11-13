@@ -25,24 +25,11 @@ struct LidPose: Equatable {
 }
 
 enum LidGeometry {
-    struct Point {
-        let x: Double
-        let y: Double
-        let z: Double
-    }
+    // 由原模型屏幕平面的方向测得，而非将原始打开姿态误当成 90°。
+    static let restAngle = 109.90796
 
-    static func lidPoint(x: Double, distance: Double, angle: Double,
-                         inset: Double = 0) -> Point {
-        let radians = max(0, min(180, angle)) * .pi / 180
-        // 铰链沿 x 轴：0° 与底座重合，90° 竖直，超过90°向后展开。
-        return Point(x: x,
-                     y: distance * cos(radians) + inset * sin(radians),
-                     z: distance * sin(radians) - inset * cos(radians))
-    }
-
-    static func project(_ point: Point, size: CGSize) -> CGPoint {
-        let scale = min(size.width / 350, size.height / 240)
-        return CGPoint(x: size.width * 0.58 + (point.x * 0.88 - point.y * 0.46) * scale,
-                       y: size.height * 0.72 + (point.x * 0.06 + point.y * 0.29 - point.z * 0.94) * scale)
+    static func rotation(for angle: Double) -> Double {
+        let clamped = angle.isFinite ? max(0, min(180, angle)) : 90
+        return (restAngle - clamped) * .pi / 180
     }
 }
