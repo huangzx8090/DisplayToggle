@@ -547,6 +547,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private var timer: Timer?
+    private var settingsController: SettingsWindowController?
 
     /// 用户意图：内屏应该处于关闭状态
     private var wantBuiltinOff = false
@@ -713,6 +714,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         scheduleHiDPIRefresh()
         rebuildMenu()
+        if openSettingsOnLaunch { showSettings() }
 
         // 启动后延迟静默检查更新（24 小时内只查一次），不打扰启动过程
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
@@ -724,6 +726,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 退出时把内屏恢复回来，避免留下"关着内屏又没人管"的黑屏状态。
         // 但合盖时绝不点亮内屏——不然就成了"合着盖内屏却亮着"。
         restoreForShutdown()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettings()
+        return false
     }
 
     private func restoreForShutdown() {
@@ -846,6 +853,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     dtlog("lid-angle angle=\(value.map(String.init) ?? "unknown") mode=\(String(describing: self.angleMode)) threshold=\(self.angleThreshold)")
                     self.tick()
                 }
+                self.publishSettingsState()
             }
         }
         angleTimer = timer
@@ -1023,6 +1031,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rebuildMenu()
         } else if menuExternalCount != extOnline || menuLid != lidState {
             rebuildMenu()
+        } else {
+            publishSettingsState()
         }
     }
 
@@ -1158,13 +1168,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func adjustDDC(_ sender: DDCSlider) {
-        guard let display = sender.display, let feature = sender.feature,
-              !ddcBusy.contains(display) else { return }
+        guard let display = sender.display, let feature = sender.feature else { return }
+        adjustDDC(display: display, feature: feature, percent: sender.doubleValue)
+    }
+
+    private func adjustDDC(display: HiDPIDisplay, feature: DDCFeature, percent: Double) {
+        guard !ddcBusy.contains(display) else { return }
         if feature.requiresBackup && Lid.state == .open && DisplayService.isBuiltinActive() {
             ManualOverride.holdForPreview()
         }
-        let percent = sender.doubleValue
         ddcBusy.insert(display)
+        publishSettingsState()
         ddcQueue.async { [weak self] in
             let result: DDCPreviewResult
             if feature.requiresBackup && !HiDPIService.hasSafeBackup(excluding: display) {
@@ -1251,13 +1265,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func selectHiDPIMode(_ sender: NSMenuItem) {
-        guard !hiDPIBusy, let selection = sender.representedObject as? HiDPISelection else { return }
+        guard let selection = sender.representedObject as? HiDPISelection else { return }
+        selectHiDPIMode(display: selection.display, mode: selection.mode)
+    }
+
+    private func selectHiDPIMode(display: HiDPIDisplay, mode: HiDPIMode) {
+        guard !hiDPIBusy else { return }
         // 保持内屏作为预览期间的备用画面，独立于外屏的显示配置。
         if Lid.state == .open && DisplayService.isBuiltinActive() { ManualOverride.holdForPreview() }
         hiDPIBusy = true
         rebuildMenu()
         hiDPIQueue.async { [weak self] in
-            let result = HiDPIService.beginPreview(display: selection.display, requested: selection.mode)
+            let result = HiDPIService.beginPreview(display: display, requested: mode)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.hiDPIBusy = false
@@ -1338,7 +1357,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleAutoTrueTone(_ sender: NSMenuItem) {
-        autoTrueTone.toggle()
+        setAutoTrueTone(!autoTrueTone)
+    }
+
+    private func setAutoTrueTone(_ enabled: Bool) {
+        autoTrueTone = enabled
         trueToneTargetKnown = false
         trueToneGeneration += 1
         trueToneStatus = nil
@@ -1349,6 +1372,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func selectExternalMode(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
               let selected = ExternalDisplayMode(rawValue: raw) else { return }
+        setExternalMode(selected)
+    }
+
+    private func setExternalMode(_ selected: ExternalDisplayMode) {
         externalMode = selected
         if selected == .manual && ManualOverride.current == nil { wantBuiltinOff = false }
         externalStableSince = nil
@@ -1359,7 +1386,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func selectAngleThreshold(_ sender: NSMenuItem) {
         guard let value = sender.representedObject as? NSNumber else { return }
-        angleThreshold = value.intValue
+        setAngleThreshold(value.intValue)
+    }
+
+    private func setAngleThreshold(_ value: Int) {
+        angleThreshold = value
         anglePolicy.reset()
         angleMode = nil
         angleNextAttempt = 0
@@ -1368,7 +1399,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleAllowLidClosed(_ sender: NSMenuItem) {
-        allowBuiltinOnWhenLidClosed.toggle()
+        setAllowLidClosed(!allowBuiltinOnWhenLidClosed)
+    }
+
+    private func setAllowLidClosed(_ enabled: Bool) {
+        allowBuiltinOnWhenLidClosed = enabled
         if !allowBuiltinOnWhenLidClosed && Lid.state == .closed &&
             DisplayService.isBuiltinActive() && DisplayService.activeExternalCount() > 0 {
             let result = DisplayService.setBuiltin(enabled: false)
@@ -1395,8 +1430,110 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleLoginItem(_ sender: NSMenuItem) {
-        LoginItem.setEnabled(!LoginItem.isEnabled)
+        setLoginEnabled(!LoginItem.isEnabled)
+    }
+
+    private func setLoginEnabled(_ enabled: Bool) {
+        LoginItem.setEnabled(enabled)
         rebuildMenu()
+    }
+
+    // MARK: 原生设置窗口
+
+    @objc private func showSettings() {
+        if settingsController == nil {
+            let actions = SettingsActions(
+                setBuiltin: { [weak self] enabled in
+                    if enabled { self?.turnOn() } else { self?.turnOff() }
+                },
+                selectMode: { [weak self] in self?.setExternalMode($0) },
+                setThreshold: { [weak self] in self?.setAngleThreshold($0) },
+                setAutoRestore: { [weak self] enabled in
+                    self?.autoRestore = enabled
+                    self?.rebuildMenu()
+                },
+                setKeepOnWhenClosed: { [weak self] in self?.setAllowLidClosed($0) },
+                setAutoTrueTone: { [weak self] in self?.setAutoTrueTone($0) },
+                setLoginEnabled: { [weak self] in self?.setLoginEnabled($0) },
+                selectDisplayMode: { [weak self] id, mode in
+                    guard let self, let display = self.hiDPISnapshots.first(where: { $0.display.id == id }) else { return }
+                    self.selectHiDPIMode(display: display.display, mode: mode)
+                },
+                setHardware: { [weak self] id, feature, percent in
+                    guard let self, let display = self.hiDPISnapshots.first(where: { $0.display.id == id }),
+                          let feature = DDCFeature(rawValue: feature) else { return }
+                    self.adjustDDC(display: display.display, feature: feature, percent: percent)
+                },
+                refreshDisplays: { [weak self] in
+                    self?.ddcLoaded = false
+                    self?.scheduleHiDPIRefresh()
+                    self?.rebuildMenu()
+                },
+                openLog: { [weak self] in self?.openLog() },
+                exportDiagnostics: { [weak self] in self?.exportDiagnostics() },
+                checkUpdates: { [weak self] in self?.checkForUpdates() })
+            settingsController = SettingsWindowController(
+                model: DisplaySettingsModel(state: makeSettingsState(), actions: actions))
+        }
+        settingsController?.model.update(makeSettingsState())
+        settingsController?.present()
+    }
+
+    private func publishSettingsState() {
+        guard let controller = settingsController, controller.window?.isVisible == true else { return }
+        controller.model.update(makeSettingsState())
+    }
+
+    private func makeSettingsState() -> DisplaySettingsState {
+        var state = DisplaySettingsState()
+        state.builtinActive = DisplayService.isBuiltinActive()
+        state.builtinVisible = DisplayService.isBuiltinVisible()
+        state.externalCount = externalDisplayCount
+        state.activeExternalCount = activeExternalDisplayCount
+        let lid = Lid.state
+        state.lidClosed = lid == .unknown ? nil : lid == .closed
+        state.angle = angleValue
+        state.externalMode = externalMode
+        state.angleThreshold = angleThreshold
+        state.autoRestore = autoRestore
+        state.keepOnWhenClosed = allowBuiltinOnWhenLidClosed
+        state.autoTrueTone = autoTrueTone
+        state.trueToneStatus = autoTrueTone ? (trueToneStatus?.title ?? "检测中") : "自动切换已关闭"
+        switch keyboardStatus {
+        case .idle: state.keyboardStatus = nil
+        case .holding: state.keyboardStatus = "键盘灯已关闭，内屏恢复显示后自动恢复。"
+        case .unavailable: state.keyboardStatus = "键盘灯控制暂不可用，或恢复尚未确认。"
+        }
+        state.loginEnabled = LoginItem.isEnabled
+        state.version = Updater.currentVersion
+        state.displaysLoaded = hiDPILoaded
+        state.displayModeBusy = hiDPIBusy
+        state.hardwareReading = ddcReading
+        // 复用后台读取的模式/DDC快照，窗口刷新不再访问慢速硬件接口。
+        state.displays = hiDPISnapshots.map { snapshot in
+            var details: [String] = []
+            if let native = snapshot.nativeSize { details.append("原生 \(Int(native.width))×\(Int(native.height))") }
+            if let render = snapshot.renderSize { details.append("渲染 \(Int(render.width))×\(Int(render.height))") }
+            if snapshot.rotation != 0 { details.append("旋转 \(Int(snapshot.rotation))°") }
+            let values = ddcValues[snapshot.display] ?? []
+            let restriction: String? = snapshot.mirrored ? "镜像状态暂不支持切换模式。"
+                : (!snapshot.canRestore ? "无法确认还原通道，当前仅能查看模式。" : nil)
+            let hardwareMessage: String? = !values.isEmpty ? nil
+                : (!DDCService.availableOnPlatform ? "当前架构或系统接口不支持 DDC 硬件控制。"
+                   : (ddcLoaded ? "未检测到可读取的 DDC 控制。" : "正在读取硬件控制…"))
+            return SettingsDisplay(
+                id: snapshot.display.id, name: snapshot.name, current: snapshot.current,
+                details: details.joined(separator: "，"),
+                hiDPI: snapshot.hiDPI, loDPI: snapshot.loDPI, refreshRates: snapshot.refreshRates,
+                restriction: restriction,
+                hardware: DDCFeature.allCases.compactMap { feature in
+                    values.first(where: { $0.feature == feature }).map {
+                        SettingsHardwareControl(id: feature.rawValue, title: feature.title, percent: $0.percent)
+                    }
+                },
+                hardwareMessage: hardwareMessage, hardwareBusy: ddcBusy.contains(snapshot.display))
+        }
+        return state
     }
 
     private func showAlert(_ text: String) {
@@ -1457,6 +1594,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(angle)
         angleStatusItem = angle
 
+        menu.addItem(.separator())
+
+        let settings = NSMenuItem(title: "设置…", action: #selector(showSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(.separator())
 
         let off = NSMenuItem(title: "关闭内屏", action: #selector(turnOff), keyEquivalent: "d")
@@ -1671,6 +1813,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         statusItem.menu = menu
+        publishSettingsState()
     }
 }
 
@@ -1785,17 +1928,18 @@ func runCLI(_ args: [String]) -> Never {
         guard args.count == 2 else { exit(2) }
         KeyboardBacklightWorker.recover()
     default:
-        print("Usage: DisplayToggle [on|off|toggle|status|lid|lid-angle|true-tone|check-update|diagnose|diagnose-json|hidpi-list|ddc-status]")
+        print("Usage: DisplayToggle [--settings|on|off|toggle|status|lid|lid-angle|true-tone|check-update|diagnose|diagnose-json|hidpi-list|ddc-status]")
         print("  不带参数运行则启动菜单栏应用")
         exit(2)
     }
 }
 
 let arguments = CommandLine.arguments
+let openSettingsOnLaunch = arguments.count == 2 && arguments[1] == "--settings"
 if arguments.count < 2 || arguments[1].lowercased() != "diagnose-json" {
     LegacyMigration.runIfNeeded()
 }
-if arguments.count > 1 {
+if arguments.count > 1 && !openSettingsOnLaunch {
     runCLI(arguments)
 }
 

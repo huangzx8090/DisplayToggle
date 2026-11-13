@@ -21,3 +21,5 @@ swiftc DisplayConfigurationLock.swift tests/DisplayConfigurationLockTests.swift 
 "$TEST_DIR/display-configuration-lock-tests"
 swiftc Version.swift tests/VersionTests.swift -o "$TEST_DIR/version-tests"
 "$TEST_DIR/version-tests"
+swiftc DisplayPolicy.swift ModeCatalog.swift LidGeometry.swift SettingsModel.swift tests/SettingsStateTests.swift -o "$TEST_DIR/settings-state-tests"
+"$TEST_DIR/settings-state-tests"

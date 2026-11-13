@@ -111,6 +111,24 @@ xattr -cr /Applications/DisplayToggle.app
 
 建议在菜单里打开 **开机自动启动**，否则重启后没有守护进程，拔线就没有安全网了。
 
+## 原生设置窗口
+
+从菜单栏点击 **设置…**，可集中调整显示策略、角度阈值、无画面恢复、
+合盖保持、原彩和登录启动；设置与原菜单共用同一套状态与执行逻辑。
+关闭设置窗口后，菜单栏应用继续运行。
+
+“显示与策略”页中的 MacBook 示意随真实角度读数开合，底座保持固定。
+合盖状态优先于滞后的角度读数；没有有效角度时明确显示不可用，
+不会把中性示意姿态当成实际角度。动画遵循系统“减少动态效果”设置。
+
+“外接显示器”页列出后台已读取的分辨率、刷新率及硬件控制，
+沿用原有预览、确认和还原保护；DDC 滑块在松开后才发送调整。
+“通用与诊断”页提供登录启动、日志、诊断报告和更新入口。
+
+也可以直接打开应用并显示设置窗口：
+
+    open /Applications/DisplayToggle.app --args --settings
+
 ## 更新
 
 - 菜单里有 **检查更新…（v当前版本）**，会拉取 GitHub 最新 Release；
@@ -193,6 +211,10 @@ DT_FAKE_ANGLE=120 ...                     # 假装盖子角度
 
 ```
 main.swift              菜单栏 App、状态机、CLI、旧版本迁移
+SettingsModel.swift     设置窗口状态与动作桥接
+SettingsWindow.swift    原生设置窗口、策略及外接屏控件
+LidGeometry.swift       角度读数展示规则与铰链投影
+LidIllustration.swift   跟随角度的 MacBook 开合示意
 Updater.swift           GitHub Release 检查 / 下载 / 原子替换
 Version.swift           版本号比较
 DisplayPolicy.swift     三档外屏策略定义
