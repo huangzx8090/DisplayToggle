@@ -178,10 +178,6 @@ private struct SettingsRootView: View {
                 }
                 .pickerStyle(.radioGroup)
                 .labelsHidden()
-                Text(modeExplanation)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
                 if model.state.externalMode == .angle {
                     HStack {
                         Text("打开内屏的角度")
@@ -225,19 +221,6 @@ private struct SettingsRootView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-        }
-    }
-
-    private var modeExplanation: String {
-        switch model.state.externalMode {
-        case .angle:
-            return model.state.pose.source == .sensor
-                ? "达到设定角度时使用内屏。设备模型跟随真实读数开合。"
-                : "需要可读取的角度传感器。没有有效读数时，角度控制暂停。"
-        case .externalOnly:
-            return "物理外接屏稳定出画后关闭内屏，拔掉全部外屏时按保护条件尝试恢复。"
-        case .manual:
-            return "内屏由你手动开关，拔掉全部外屏后的恢复保护仍然有效。"
         }
     }
 
@@ -300,11 +283,6 @@ private struct SettingsRootView: View {
                     .padding(12)
                 }
             }
-            if !model.state.displays.isEmpty {
-                Text("显示模式变更需要及时确认。没有备用画面时，亮度与对比度调整也会先进入预览，超时将尝试还原。")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 
@@ -331,7 +309,7 @@ private struct SettingsRootView: View {
         VStack(alignment: .leading, spacing: 22) {
             SettingsToggle(
                 title: "开机自动启动",
-                detail: "在下次登录时启动当前路径的应用。移动应用后请重新检查。",
+                detail: nil,
                 value: binding(\.loginEnabled, model.actions.setLoginEnabled))
             Divider()
             VStack(alignment: .leading, spacing: 12) {
@@ -412,15 +390,17 @@ private struct LidStatusView: View {
 
 private struct SettingsToggle: View {
     let title: String
-    let detail: String
+    let detail: String?
     @Binding var value: Bool
 
     var body: some View {
         HStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                Text(detail).font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let detail {
+                    Text(detail).font(.callout).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Toggle(title, isOn: $value)
