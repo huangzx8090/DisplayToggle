@@ -1,4 +1,6 @@
-# DisplayToggle
+# 屏衡
+
+屏衡多显示器状态控制与异常恢复软件，界面简称“屏衡”。
 
 [![CI](https://github.com/huangzx8090/DisplayToggle/actions/workflows/ci.yml/badge.svg)](https://github.com/huangzx8090/DisplayToggle/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/huangzx8090/DisplayToggle)](https://github.com/huangzx8090/DisplayToggle/releases/latest)

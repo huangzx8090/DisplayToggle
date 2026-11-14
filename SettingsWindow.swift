@@ -13,7 +13,7 @@ final class SettingsWindowController: NSWindowController {
             contentRect: NSRect(x: 0, y: 0, width: 1060, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
-        window.title = "DisplayToggle 设置"
+        window.title = "屏衡设置"
         window.contentMinSize = NSSize(width: 900, height: 630)
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("DisplayToggleSettings")
@@ -64,9 +64,19 @@ private struct SettingsRootView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 24) {
-                Label("DisplayToggle", systemImage: "laptopcomputer")
-                    .font(.system(size: 15, weight: .semibold))
-                    .padding(.top, 14)
+                HStack(spacing: 12) {
+                    Image(nsImage: NSApplication.shared.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 38, height: 38)
+                        .accessibilityHidden(true)
+                    Text("屏衡")
+                        .font(.system(size: 23, weight: .semibold))
+                        .tracking(3)
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 2)
+                .accessibilityElement(children: .combine)
                 VStack(spacing: 5) {
                     ForEach(SettingsPage.allCases) { item in
                         Button {
@@ -337,20 +347,12 @@ private struct SettingsRootView: View {
             Divider()
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("DisplayToggle").font(.headline)
+                    Text("屏衡").font(.headline)
                     Text("当前版本 \(model.state.version)").foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("检查更新…") { model.actions.checkUpdates() }
             }
-            Divider()
-            HStack(spacing: 6) {
-                Text("设备模型：akshatmittal")
-                Link("原始素材", destination: URL(string: "https://sketchfab.com/3d-models/2021-macbook-pro-14-m1-pro-m1-max-f6b0b940fb6a4286b18a674ef32af2d3")!)
-                Link("CC BY 4.0", destination: URL(string: "https://creativecommons.org/licenses/by/4.0/")!)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
     }
 

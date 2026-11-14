@@ -1147,7 +1147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func exportDiagnostics() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "DisplayToggle-diagnostics.json"
+        panel.nameFieldStringValue = "屏衡-诊断报告.json"
         panel.message = "导出当前显示状态，不包含序列号、个人路径或日志正文。"
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -1538,7 +1538,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showAlert(_ text: String) {
         let a = NSAlert()
-        a.messageText = "DisplayToggle"
+        a.messageText = "屏衡"
         a.informativeText = text
         a.alertStyle = .warning
         a.addButton(withTitle: "好")
@@ -1809,7 +1809,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "退出 DisplayToggle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "退出屏衡", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
 
         statusItem.menu = menu
