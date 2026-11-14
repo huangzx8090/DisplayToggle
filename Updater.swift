@@ -358,7 +358,7 @@ enum Updater {
         guard fm.isWritableFile(atPath: parent.path) else {
             throw UpdaterError.message("""
             没有权限写入 \(parent.path)。
-            请把 DisplayToggle.app 移到 ~/Applications 或你有权限的目录后再试。
+            请把屏衡应用移到 ~/Applications 或你有权限的目录后再试。
             """)
         }
 

@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 APP_NAME="DisplayToggle"
+DISPLAY_NAME="屏衡"
 VERSION="${DISPLAYTOGGLE_VERSION:-1.10.0}"
 BUILD_NUMBER="${DISPLAYTOGGLE_BUILD:-1}"
 # 反向域名标识，换了仓库可以自己改，或用环境变量覆盖：
@@ -20,6 +21,8 @@ fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp -R Assets/MacBook "$APP/Contents/Resources/MacBook"
+cp -R THIRD_PARTY_LICENSES "$APP/Contents/Resources/Licenses"
 
 ARCH_DIR="$BUILD_DIR/arch"
 mkdir -p "$ARCH_DIR"
@@ -28,7 +31,7 @@ BINARIES=()
 for architecture in $ARCHS; do
     case "$architecture" in arm64|x86_64) ;; *) echo "不支持的架构: $architecture" >&2; exit 1 ;; esac
     binary="$ARCH_DIR/$APP_NAME-$architecture"
-    swiftc -O -target "$architecture-apple-macos13.0" main.swift Version.swift Updater.swift HiDPI.swift ModeCatalog.swift DisplayInfo.swift DisplayPolicy.swift DisplayConfigurationLock.swift DDCService.swift DDCProtocol.swift DDCPreview.swift PreviewLock.swift TrueTonePolicy.swift TrueToneService.swift LidAngle.swift AnglePolicy.swift KeyboardBacklightPolicy.swift KeyboardBacklight.swift -o "$binary"
+    swiftc -O -target "$architecture-apple-macos13.0" main.swift Version.swift DiagnosticReport.swift Updater.swift HiDPI.swift ModeCatalog.swift DisplayInfo.swift DisplayPolicy.swift DisplayConfigurationLock.swift DDCService.swift DDCProtocol.swift DDCPreview.swift PreviewLock.swift TrueTonePolicy.swift TrueToneService.swift LidAngle.swift AnglePolicy.swift KeyboardBacklightPolicy.swift KeyboardBacklight.swift SettingsModel.swift SettingsWindow.swift LidGeometry.swift LidIllustration.swift -o "$binary"
     BINARIES+=("$binary")
 done
 if [ "${#BINARIES[@]}" -eq 1 ]; then
@@ -55,8 +58,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>            <string>$APP_NAME</string>
-    <key>CFBundleDisplayName</key>     <string>$APP_NAME</string>
+    <key>CFBundleName</key>            <string>$DISPLAY_NAME</string>
+    <key>CFBundleDisplayName</key>     <string>$DISPLAY_NAME</string>
     <key>CFBundleExecutable</key>      <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>      <string>$BUNDLE_ID</string>
     <key>CFBundleIconFile</key>        <string>AppIcon</string>

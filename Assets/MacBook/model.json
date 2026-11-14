@@ -1,0 +1,626 @@
+{
+  "author": "akshatmittal",
+  "changes": "Converted original geometry and PNG textures to SceneKit; baked scale; named lid/base groups; display material and lighting adjusted at runtime. Original mesh topology preserved.",
+  "download": "https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-134/f6b0b940fb6a4286b18a674ef32af2d3.glb",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "materials": [
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": true,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_0",
+      "roughness": 0.6
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_1",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        1,
+        1,
+        1
+      ],
+      "metalness": 0.8,
+      "name": "material_2",
+      "roughness": 0.1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.00499923,
+        0.00499923,
+        0.00499923,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_3",
+      "roughness": 0.001
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.932256,
+        0.938459,
+        0.950863,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0.0099,
+        0.00993333,
+        0.01
+      ],
+      "metalness": 1,
+      "name": "material_4",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.55
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.0139702,
+        0.0139702,
+        0.0139702,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_5",
+      "roughness": 0.6
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.014,
+        0.014,
+        0.014,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_6",
+      "roughness": 0.55
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.18,
+        0.18,
+        0.18,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_7",
+      "roughness": 0.5
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.310866,
+        0.313177,
+        0.317802,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_8",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.55
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_9",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0.8,
+      "name": "material_10",
+      "roughness": 0.1
+    },
+    {
+      "alphaBlend": true,
+      "color": [
+        0,
+        0,
+        0,
+        0.1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0.8,
+      "name": "material_11",
+      "roughness": 0.1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_12",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.03,
+        0.0975,
+        0.3,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_13",
+      "roughness": 0.001
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.918412,
+        0.924088,
+        0.949108,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0.0098,
+        0.00986667,
+        0.01
+      ],
+      "metalness": 1,
+      "name": "material_14",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.45
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.010023,
+        0.010023,
+        0.010023,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_15",
+      "roughness": 0.001
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.00559274,
+        0.00564629,
+        0.00603877,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_16",
+      "normalTexture": "textures/1.png",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": true,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "diffuseTexture": "textures/2.png",
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_17",
+      "normalTexture": "textures/3.png",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_18",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metallicRoughnessTexture": "textures/4.png",
+      "metalness": 1,
+      "name": "material_19",
+      "normalTexture": "textures/5.png",
+      "occlusionTexture": "textures/4.png",
+      "roughness": 1
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_20",
+      "roughness": 0.4
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.0981904,
+        0.0988787,
+        0.100256,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_21",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.55
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.004585,
+        0.00463269,
+        0.005,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_22",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.45
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.912907,
+        0.918976,
+        0.931117,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0.0098,
+        0.00986667,
+        0.01
+      ],
+      "metalness": 1,
+      "name": "material_23",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.43
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.448,
+        0.448,
+        0.448,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0.00489643,
+        0.00489643,
+        0.00489643
+      ],
+      "metalness": 1,
+      "name": "material_24",
+      "roughness": 0.4
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.394046,
+        0.402631,
+        0.442053,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0.2,
+      "name": "material_25",
+      "roughness": 0.7
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.7,
+        0.7,
+        0.7,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_26",
+      "roughness": 0.2
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.318555,
+        0.318555,
+        0.318555,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_27",
+      "roughness": 0.4
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.318555,
+        0.318555,
+        0.318555,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_28",
+      "roughness": 0.4
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.447981,
+        0.447981,
+        0.447981,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0.00489643,
+        0.00489643,
+        0.00489643
+      ],
+      "metalness": 1,
+      "name": "material_29",
+      "roughness": 0.2
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.318555,
+        0.318555,
+        0.318555,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 0,
+      "name": "material_30",
+      "roughness": 0.4
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.307824,
+        0.309519,
+        0.318,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0,
+        0,
+        0
+      ],
+      "metalness": 1,
+      "name": "material_31",
+      "normalTexture": "textures/0.png",
+      "roughness": 0.55
+    },
+    {
+      "alphaBlend": false,
+      "color": [
+        0.447981,
+        0.447981,
+        0.447981,
+        1
+      ],
+      "doubleSided": false,
+      "emission": [
+        0.00499923,
+        0.00499923,
+        0.00499923
+      ],
+      "metalness": 1,
+      "name": "material_32",
+      "roughness": 0.4
+    }
+  ],
+  "source": "https://sketchfab.com/3d-models/2021-macbook-pro-14-m1-pro-m1-max-f6b0b940fb6a4286b18a674ef32af2d3",
+  "sourceSHA256": "a0e7369e062cb29fd12a7c91c3cf6120e5ab65cfc3dfc428a57139162d6e144d",
+  "title": "2021 Macbook Pro 14\" (M1 Pro / M1 Max)",
+  "triangles": 104997,
+  "lighting": {
+    "title": "Studio Small 09",
+    "source": "https://polyhaven.com/a/studio_small_09",
+    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "download": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr",
+    "sha256": "e7cfda5f4e98e623db12b8bfd0184e048488e4855d9c83e2751fb44a32e80c45"
+  }
+}
